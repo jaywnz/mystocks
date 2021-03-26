@@ -1,6 +1,8 @@
 # 159.352 Assignment 1
 # Author: JW based on server3.py by Sunil Lal
 
+#! /usr/bin/env python3
+
 from socket import *
 from base64 import b64encode
 from io import BytesIO
@@ -73,14 +75,19 @@ def process(connectionSocket) :
     # Receives the request message from the client
     message = connectionSocket.recv(1024).decode()
 
+    method = getMethod(message)
+    if method == "POST":
+        processForm(message)
+
     if len(message) > 1:
 
         # Extract the path of the requested object from the message
         resource = message.split()[1][1:]
-
+        
         if auth == False:
             responseHeader, responseBody = authenticate(message)
         else:
+            
             if resource == "portfolio":
                 responseHeader, responseBody = showPortfolio()
             elif resource == "stock":
@@ -98,13 +105,13 @@ def process(connectionSocket) :
     connectionSocket.close()
 
 
-#Function to split message and return HTTP protocol
-def getProtocol(message) :
+#Function to split message and return HTTP method
+def getMethod(message) :
 
     x = message.split(" ")
-    protocol = x[0]
+    method = x[0]
     
-    return protocol
+    return method
 
 
 #Carries out basic HTTP authentication
@@ -132,13 +139,8 @@ def authenticate(message) :
         return header, body
 
 
-# Parse portfolio information from a JSON file and serve it
-def showPortfolio() :
-    print("Showing portfolio...")
-
-    path = Path(__file__).with_name('portfolio.html')
-    with path.open("rb") as file:
-        body = file.read()
+# Retrieve list of stock symbols from IEX Cloud as cs.json
+def getSymbols() :
 
     # Retrieve list of stock symbols
     response_buffer = BytesIO()
@@ -159,12 +161,46 @@ def showPortfolio() :
     path = Path(__file__).with_name('cs.json')
     with path.open("w") as file:
         json.dump(csSymbols, file)
+    
+    return
+
+
+# Present portfolio page
+def showPortfolio() :
+    print("Showing portfolio...")
+
+    # Check to see if the symbols file exists, if not, retrieve
+    if Path(__file__).with_name('cs.json').is_file():
+        pass
+    else:
+        getSymbols()
+
+    # Add portfolio.html to body
+    path = Path(__file__).with_name('portfolio.html')
+    with path.open("rb") as file:
+        body = file.read()
 
     header = "HTTP/1.1 200 OK\r\n\r\n".encode()
 
     return header, body
 
-    # Use list to populate select on portfolio.html
+# Process form data from HTTP POST and store as JSON
+def processForm(message) :
+    data = {}
+    # Split POST body from header
+    post = message.split("\r\n\r\n")[1]
+    # Break parameters into list
+    x = post.split("&")
+    # Convert list to dict
+    for i in x:
+        key, value = i.split("=")
+        data[key]=value
+    # Write to JSON file
+    path = Path(__file__).with_name('portfolio.json')
+    with path.open("w") as file:
+        json.dump(data, file)
+
+    return
 
     # Store the ticker symbol
     # Store the quantity purchased
@@ -172,11 +208,6 @@ def showPortfolio() :
     # Validate user changes
     # Update the portfolio.json file with HTTP POST request
 
-
-    # header = "HTTP/1.1 200 OK\r\n\r\n".encode()
-    # body = "<html><head></head><body><h1>Portfolio</h1><p>This is your portfolio site.</p></body></html>\r\n".encode()
-
-    # return header, body
 
 # Plot stock graph
 def showStock() :

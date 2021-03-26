@@ -14,9 +14,9 @@ Author: JW -->
 <body>
     <table>
     </table>
-    <form action="/submit" method="POST">
+    <form action="server.py" method="POST">
         <label for="symbol">Stock Symbol</label>
-        <select id="symbol"></select><br>
+        <select id="symbol" name="symbol"></select><br>
         <label for="quantity">Quantity</label>
         <input type="number" id="quantity" name="quantity"><br>
         <label for="price">Price</label>
