@@ -11,6 +11,7 @@ placeholder.selected = true;
 
 select.appendChild(placeholder);
 
+// Populate select with stock symbols from cs.json
 fetch("http://localhost:8080/cs.json")
     .then(response => response.json())
     .then(data => {
