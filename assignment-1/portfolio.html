@@ -1,0 +1,29 @@
+<!-- Portfolio page for 159.352 Assignment 1
+Author: JW -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio</title>
+    <link rel="stylesheet" href="main.css">
+    <script src="main.js" defer></script>
+</head>
+<body>
+    <table>
+    </table>
+    <form action="/submit" method="POST">
+        <label for="symbol">Stock Symbol</label>
+        <select id="symbol"></select><br>
+        <label for="quantity">Quantity</label>
+        <input type="number" id="quantity" name="quantity"><br>
+        <label for="price">Price</label>
+        <input type="number" id="price" name="price" step="0.01"><br>
+        <input type="reset" value="Reset">
+        <input type="submit" value="Update">
+    </form>
+    <a href="https://iexcloud.io">Data provided by IEX Cloud</a>
+</body>
+</html>

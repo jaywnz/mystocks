@@ -3,7 +3,11 @@
 
 from socket import *
 from base64 import b64encode
+from io import BytesIO
 import _thread
+import pycurl
+import json
+from pathlib import Path
 
 serverSocket = socket(AF_INET, SOCK_STREAM)
 
@@ -24,19 +28,23 @@ def getHeader(message, header):
         value = None
     return value
 
-# Service function to fetch the requested file, and send the contents back to the client in a HTTP response.
+# Fetch the requested file and send the contents back to the client in a HTTP response
 def getFile(filename):
 
     try:
+        path = Path(__file__).with_name(filename)
+        with path.open("rb") as file:
+            body = file.read()
 
-        f = open(filename, "rb")
-        # Store the entire content of the requested file in a temporary buffer
-        body = f.read()
-
-        # if the filename ends with (png||jpg) then set the Content-Type to be "image/(png||jpg)"
+        # Set correct Content-Type for images
         if filename.endswith(('png', 'jpg')):
             contentType = "image/" + filename.split('.')[-1]
-        # else set the Content-Type to be "text/html"
+        elif filename.endswith(('json')):
+            contentType = "application/json"
+        elif filename.endswith(('css')):
+            contentType = "text/css"
+        elif filename.endswith(('js')):
+            contentType = "text/javascript"    
         else:
             contentType = "text/html"
 
@@ -81,14 +89,6 @@ def process(connectionSocket) :
                 responseHeader, responseBody = home()
             else:
                 responseHeader, responseBody = getFile(resource)
-        
-                
-        # elif auth == True and resource == "portfolio":
-        #     responseHeader, responseBody = showPortfolio()
-        # elif auth == True and resource == "stock":
-        #     responseHeader, responseBody = showStock()
-        # else:
-        #     responseHeader, responseBody = getFile(resource)
 
     # Send the HTTP response header line to the connection socket
     connectionSocket.send(responseHeader)
@@ -105,6 +105,7 @@ def getProtocol(message) :
     protocol = x[0]
     
     return protocol
+
 
 #Carries out basic HTTP authentication
 def authenticate(message) :
@@ -130,16 +131,52 @@ def authenticate(message) :
         body = "<html><head></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
         return header, body
 
+
 # Parse portfolio information from a JSON file and serve it
 def showPortfolio() :
     print("Showing portfolio...")
 
-    # TODO
+    path = Path(__file__).with_name('portfolio.html')
+    with path.open("rb") as file:
+        body = file.read()
+
+    # Retrieve list of stock symbols
+    response_buffer = BytesIO()
+    curl = pycurl.Curl()
+    curl.setopt(curl.SSL_VERIFYPEER, False)
+    curl.setopt(curl.URL, 'https://cloud.iexapis.com/stable/ref-data/symbols?token=pk_dc1d04cb0f2c4bc5b81af61256b2fd47')
+    curl.setopt(curl.WRITEFUNCTION, response_buffer.write)
+    curl.perform()
+    curl.close()
+
+    # Load all symbols into JSON file from memory buffer
+    allSymbols = json.loads(response_buffer.getvalue().decode('UTF-8'))
+
+    # Filter only those symbols of type 'cs'
+    csSymbols = [x for x in allSymbols if x['type'] == 'cs']
+
+    # Save filtered symbols to same directory as Python script
+    path = Path(__file__).with_name('cs.json')
+    with path.open("w") as file:
+        json.dump(csSymbols, file)
 
     header = "HTTP/1.1 200 OK\r\n\r\n".encode()
-    body = "<html><head></head><body><h1>Portfolio</h1><p>This is your portfolio site.</p></body></html>\r\n".encode()
 
     return header, body
+
+    # Use list to populate select on portfolio.html
+
+    # Store the ticker symbol
+    # Store the quantity purchased
+    # Store the purchase price
+    # Validate user changes
+    # Update the portfolio.json file with HTTP POST request
+
+
+    # header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+    # body = "<html><head></head><body><h1>Portfolio</h1><p>This is your portfolio site.</p></body></html>\r\n".encode()
+
+    # return header, body
 
 # Plot stock graph
 def showStock() :
