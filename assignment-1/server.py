@@ -52,8 +52,7 @@ def getFile(filename):
 
         header = ("HTTP/1.1 200 OK\r\nContent-Type:" + contentType + "\r\n\r\n").encode()
 
-    except IOError:
-
+    except OSError:
         # Send HTTP response message for resource not found
         header = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
         body = "<html><head></head><body><h1>404 Not Found</h1></body></html>\r\n".encode()
@@ -77,9 +76,8 @@ def process(connectionSocket) :
 
     method = getMethod(message)
     if method == "POST":
-        processForm(message)
-
-    if len(message) > 1:
+        responseHeader, responseBody = processForm(message)
+    elif len(message) > 1:
 
         # Extract the path of the requested object from the message
         resource = message.split()[1][1:]
@@ -186,27 +184,79 @@ def showPortfolio() :
 
 # Process form data from HTTP POST and store as JSON
 def processForm(message) :
-    data = {}
     # Split POST body from header
-    post = message.split("\r\n\r\n")[1]
+    payload = message.split("\r\n\r\n")[1]
     # Break parameters into list
-    x = post.split("&")
+    x = payload.split("&")
+    newData = {}
     # Convert list to dict
-    for i in x:
-        key, value = i.split("=")
-        data[key]=value
-    # Write to JSON file
-    path = Path(__file__).with_name('portfolio.json')
+    for item in x:
+        key, value = item.split("=")
+        # Cast values to correct data types
+        try:
+            value = int(value)
+            newData[key]=value
+        except ValueError:
+            try:
+                value = float(value)
+                newData[key]=value
+            except ValueError:
+                newData[key]=value
+    
+    # Validate user data and return error messages
+    if newData["price"] <= 0:
+        header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+        body = "<html><head></head><body><p>Invalid price (negative).</p><a href='/portfolio'>Go back to portfolio</a>.</body></html>\r\n".encode()
+        return header, body
+    elif not isinstance(newData.get("quantity"), int):
+        header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+        body = "<html><head></head><body><p>Invalid data type. Quantity requires an integer.</p><a href='/portfolio'>Go back to portfolio</a>.</body></html>\r\n".encode()
+        return header, body
+    elif not isinstance(newData.get("price"), int) and not isinstance(newData.get("price"), float):
+        header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+        body = "<html><head></head><body><p>Invalid data type. Price requires an integer or decimal.</p><a href='/portfolio'>Go back to portfolio</a>.</body></html>\r\n".encode()
+        return header, body
+    
+    # Read existing portfolio into memory
+    try:
+        path = Path(__file__).with_name('portfolio.json')
+        with path.open("r") as file:
+            portfolio = json.load(file)
+    # If portfolio doesn't exist, create it
+    # TODO test with file deleted
+    except OSError:
+        with path.open("w") as file:
+            json.dump(newData, file)
+            portfolio = json.load(file)
+
+    # If symbol does not exist in list then append it
+    if not any(record["symbol"] == newData["symbol"] for record in portfolio):
+        portfolio.append(newData)
+    else:
+        for record in portfolio:
+            # If symbol is at same price then update quantity
+            # TODO test with floats and ints, e.g. 6.0 and 6
+            if record["symbol"] == newData["symbol"] and record["price"] == newData["price"]:
+                record["quantity"] += newData["quantity"]
+                #TODO record updates both record AND the portfolio list
+                # Delete record when quantity reaches 0 or below
+                if record["quantity"] <= 0:
+                    portfolio.remove(record)    
+                break
+            # If symbol is at different price, add new record
+            # TODO needs to check the whole list first
+            if not any(record["symbol"] == newData["symbol"] and record["price"] == newData["price"] for record in portfolio):
+                portfolio.append(newData)
+                break
+
+    # Write results back to JSON file
     with path.open("w") as file:
-        json.dump(data, file)
+        json.dump(portfolio, file)
 
-    return
+    # Refresh the portfolio after changes
+    header, body = showPortfolio()
 
-    # Store the ticker symbol
-    # Store the quantity purchased
-    # Store the purchase price
-    # Validate user changes
-    # Update the portfolio.json file with HTTP POST request
+    return header, body
 
 
 # Plot stock graph
