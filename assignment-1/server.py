@@ -9,6 +9,7 @@ import pycurl
 import json
 from pathlib import Path
 import plotly.express as px
+import re
 
 serverSocket = socket(AF_INET, SOCK_STREAM)
 
@@ -80,12 +81,15 @@ def process(connectionSocket):
 
         # Extract the path of the requested object from the message
         resource = message.split()[1][1:]
+
+        query = re.search(r'server\.py\?symbol\=[A-Z]+', resource)
         
         if auth == False:
             responseHeader, responseBody = authenticate(message)
         else:
-            
-            if resource == "portfolio":
+            if query is not None:
+                responseHeader, responseBody = makePlot(resource)
+            elif resource == "portfolio":
                 responseHeader, responseBody = showPortfolio()
             elif resource == "stock":
                 responseHeader, responseBody = showStock()
@@ -269,7 +273,8 @@ def processForm(message):
     return header, body
 
 
-def makePlot(symbol) :
+def makePlot(resource) :
+    symbol = re.search(r'[A-Z]+', resource).group(0)
 
     # API call to retrieve symbol details
     response_buffer = BytesIO()
@@ -280,24 +285,21 @@ def makePlot(symbol) :
     curl.perform()
     curl.close()
 
-    # read ytd into variable
     ytd = json.loads(response_buffer.getvalue().decode('UTF-8'))
-
     dates = []
     close = []
-
+    # Extract dates and closing prices for plotting
     for item in ytd:
         dates.append(item["date"])
         close.append(item["close"])
 
-    fig = px.line(x=dates, y=close)
-    print(fig)
+    fig = px.line(x=dates, y=close, title=symbol + ' YTD closing prices')
+    # TODO fix filepath and plot axis labels
+    fig.write_image("plot.png")
 
-
-    return
-
-    # make plot
-    # serve to client
+    header, body = showStock()
+        
+    return header, body
 
 
 # Present portfolio page

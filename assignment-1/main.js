@@ -78,6 +78,13 @@ function listSymbols() {
     });
 }
 
+// function showPlot() {
+//     let plotContainer = document.getElementById("plot");
+//     let plot = new Image();
+//     plot.src = "plot.png"
+//     plotContainer.appendChild(plot)
+// }
+
 if (document.getElementById("portfolio")){
     window.onload = makeTable();
     window.onload = listSymbols();
