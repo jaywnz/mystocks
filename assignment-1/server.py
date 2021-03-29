@@ -70,7 +70,7 @@ def home():
 
 
 # Process the client's request
-def process(connectionSocket) :	
+def process(connectionSocket):	
     # Receives the request message from the client
     message = connectionSocket.recv(1024).decode()
 
@@ -104,7 +104,7 @@ def process(connectionSocket) :
 
 
 #Function to split message and return HTTP method
-def getMethod(message) :
+def getMethod(message):
 
     x = message.split(" ")
     method = x[0]
@@ -113,7 +113,7 @@ def getMethod(message) :
 
 
 #Carries out basic HTTP authentication
-def authenticate(message) :
+def authenticate(message):
 
     # Assuming only one user
     serverCreds = b64encode(b"20020003:20020003").decode()
@@ -138,7 +138,7 @@ def authenticate(message) :
 
 
 # Retrieve list of stock symbols from IEX Cloud as cs.json
-def getSymbols() :
+def getSymbols():
 
     # Retrieve list of stock symbols
     response_buffer = BytesIO()
@@ -149,7 +149,7 @@ def getSymbols() :
     curl.perform()
     curl.close()
 
-    # Load all symbols into JSON file from memory buffer
+    # Load all symbols into JSON object from memory buffer
     allSymbols = json.loads(response_buffer.getvalue().decode('UTF-8'))
 
     # Filter only those symbols of type 'cs'
@@ -162,28 +162,42 @@ def getSymbols() :
     
     return
 
+def calcGains():
+    # Read portfolio, extract symbol and stored price
+    path = Path(__file__).with_name('portfolio.json')
+    with path.open("r") as file:
+        portfolio = json.load(file)
 
-# Present portfolio page
-def showPortfolio() :
-    print("Showing portfolio...")
+    for record in portfolio:
+        symbol = record["symbol"]
+        price = record["price"]
 
-    # Check to see if the symbols file exists, if not, retrieve
-    if Path(__file__).with_name('cs.json').is_file():
-        pass
-    else:
-        getSymbols()
+        # API call to retrieve symbol details
+        response_buffer = BytesIO()
+        curl = pycurl.Curl()
+        curl.setopt(curl.SSL_VERIFYPEER, False)
+        curl.setopt(curl.URL, 'https://cloud.iexapis.com/stable/stock/' + symbol + '/quote?token=pk_dc1d04cb0f2c4bc5b81af61256b2fd47')
+        curl.setopt(curl.WRITEFUNCTION, response_buffer.write)
+        curl.perform()
+        curl.close()
 
-    # Add portfolio.html to body
-    path = Path(__file__).with_name('portfolio.html')
-    with path.open("rb") as file:
-        body = file.read()
+        # Load response from memory buffer as JSON object and get price
+        symbolDetail = json.loads(response_buffer.getvalue().decode('UTF-8'))
+        latestPrice = symbolDetail["latestPrice"]
 
-    header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+        # Calculate gain/loss, format to percentage and add to dict
+        gain = (latestPrice - price) / price * 100
+        gain = str(round(gain, 2)) + '%'
+        record["gain"] = gain
 
-    return header, body
+    # Write changes to file    
+    with path.open("w") as file:
+        json.dump(portfolio, file)
+
+    return
 
 # Process form data from HTTP POST and store as JSON
-def processForm(message) :
+def processForm(message):
     # Split POST body from header
     payload = message.split("\r\n\r\n")[1]
     # Break parameters into list
@@ -202,7 +216,7 @@ def processForm(message) :
                 newData[key]=value
             except ValueError:
                 newData[key]=value
-    
+    # TODO catch invalied stock symbols from datalist
     # Validate user data and return error messages
     if newData["price"] <= 0:
         header = "HTTP/1.1 200 OK\r\n\r\n".encode()
@@ -224,7 +238,8 @@ def processForm(message) :
             portfolio = json.load(file)
     # If portfolio doesn't exist, create it
     # TODO test with file deleted
-    except OSError:
+    # TODO has problems when file exists but empty, needs [] to work
+    except (OSError, ValueError):
         with path.open("w") as file:
             json.dump(newData, file)
             portfolio = json.load(file)
@@ -235,23 +250,24 @@ def processForm(message) :
     else:
         for record in portfolio:
             # If symbol is at same price then update quantity
-            # TODO test with floats and ints, e.g. 6.0 and 6
             if record["symbol"] == newData["symbol"] and record["price"] == newData["price"]:
                 record["quantity"] += newData["quantity"]
-                #TODO record updates both record AND the portfolio list
                 # Delete record when quantity reaches 0 or below
                 if record["quantity"] <= 0:
                     portfolio.remove(record)    
                 break
-            # If symbol is at different price, add new record
-            # TODO needs to check the whole list first
+            # If symbol is at different price append if quantity is positive
             if not any(record["symbol"] == newData["symbol"] and record["price"] == newData["price"] for record in portfolio):
-                portfolio.append(newData)
-                break
+                if newData["quantity"] >= 1:
+                    portfolio.append(newData)
+                    break
 
-    # Write results back to JSON file
+    # Write results back to file
     with path.open("w") as file:
         json.dump(portfolio, file)
+
+    #Calculate gain/loss for portfolio
+    calcGains()
 
     # Refresh the portfolio after changes
     header, body = showPortfolio()
@@ -259,8 +275,37 @@ def processForm(message) :
     return header, body
 
 
+# def buildTable():
+#     # Read portfolio into memory
+#     path = Path(__file__).with_name('portfolio.json')
+#     with path.open("r") as file:
+#         portfolio = json.load(file)
+
+#     # Create table
+
+
+# Present portfolio page
+def showPortfolio() :
+    print("Showing portfolio...")
+
+    # Check to see if the symbols file exists, if not, retrieve
+    if Path(__file__).with_name('cs.json').is_file():
+        pass
+    else:
+        getSymbols()
+
+    # Add portfolio.html to body
+    path = Path(__file__).with_name('portfolio.html')
+    with path.open("rb") as file:
+        body = file.read()
+
+    header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+
+    return header, body
+
+
 # Plot stock graph
-def showStock() :
+def showStock():
     print("Showing stock...")
 
     # TODO
@@ -283,8 +328,3 @@ while True:
     connectionSocket.settimeout(60)
     # Start new thread to handle incoming request
     _thread.start_new_thread(process,(connectionSocket,))
-
-
-
-
-
