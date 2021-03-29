@@ -21,3 +21,8 @@ td, th {
   min-width: 100px;
   padding: 2px;
 }
+
+#chartContainer {
+  height: 300px;
+  width: 100%;
+}

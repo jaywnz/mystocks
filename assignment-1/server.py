@@ -1,8 +1,6 @@
 # 159.352 Assignment 1
 # Author: JW based on server3.py by Sunil Lal
 
-#! /usr/bin/env python3
-
 from socket import *
 from base64 import b64encode
 from io import BytesIO
@@ -10,6 +8,7 @@ import _thread
 import pycurl
 import json
 from pathlib import Path
+import plotly.express as px
 
 serverSocket = socket(AF_INET, SOCK_STREAM)
 
@@ -103,18 +102,16 @@ def process(connectionSocket):
     connectionSocket.close()
 
 
-#Function to split message and return HTTP method
+# Split message and return HTTP method
 def getMethod(message):
-
     x = message.split(" ")
     method = x[0]
     
     return method
 
 
-#Carries out basic HTTP authentication
+# Carry out basic HTTP authentication
 def authenticate(message):
-
     # Assuming only one user
     serverCreds = b64encode(b"20020003:20020003").decode()
 
@@ -261,27 +258,46 @@ def processForm(message):
                 if newData["quantity"] >= 1:
                     portfolio.append(newData)
                     break
-
     # Write results back to file
     with path.open("w") as file:
         json.dump(portfolio, file)
-
     #Calculate gain/loss for portfolio
     calcGains()
-
     # Refresh the portfolio after changes
     header, body = showPortfolio()
 
     return header, body
 
 
-# def buildTable():
-#     # Read portfolio into memory
-#     path = Path(__file__).with_name('portfolio.json')
-#     with path.open("r") as file:
-#         portfolio = json.load(file)
+def makePlot(symbol) :
 
-#     # Create table
+    # API call to retrieve symbol details
+    response_buffer = BytesIO()
+    curl = pycurl.Curl()
+    curl.setopt(curl.SSL_VERIFYPEER, False)
+    curl.setopt(curl.URL, 'https://cloud.iexapis.com/stable/stock/' + symbol + '/chart/ytd?chartCloseOnly=true&token=pk_dc1d04cb0f2c4bc5b81af61256b2fd47')
+    curl.setopt(curl.WRITEFUNCTION, response_buffer.write)
+    curl.perform()
+    curl.close()
+
+    # read ytd into variable
+    ytd = json.loads(response_buffer.getvalue().decode('UTF-8'))
+
+    dates = []
+    close = []
+
+    for item in ytd:
+        dates.append(item["date"])
+        close.append(item["close"])
+
+    fig = px.line(x=dates, y=close)
+    print(fig)
+
+
+    return
+
+    # make plot
+    # serve to client
 
 
 # Present portfolio page
@@ -308,10 +324,17 @@ def showPortfolio() :
 def showStock():
     print("Showing stock...")
 
-    # TODO
+    if Path(__file__).with_name('cs.json').is_file():
+        pass
+    else:
+        getSymbols()
+
+    # Add portfolio.html to body
+    path = Path(__file__).with_name('stock.html')
+    with path.open("rb") as file:
+        body = file.read()
 
     header = "HTTP/1.1 200 OK\r\n\r\n".encode()
-    body = "<html><head></head><body><h1>Stock</h1><p>This is your stock site.</p></body></html>\r\n".encode()
 
     return header, body
 
