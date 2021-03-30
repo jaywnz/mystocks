@@ -19,7 +19,7 @@ function makeTable() {
     let gainHead = document.createElement("th");
     stockHead.innerHTML = "Stock";
     quantityHead.innerHTML = "Quantity";
-    priceHead.innerHTML = "Price";
+    priceHead.innerHTML = "Avg. Buy Price";
     gainHead.innerHTML = "Gain/Loss";
     table.appendChild(row);
     row.appendChild(stockHead);
@@ -41,7 +41,7 @@ function makeTable() {
                 cell1.innerHTML = data[j].symbol;
                 cell2.innerHTML = data[j].quantity;
                 // Style price to USD for US stocks
-                cell3.innerHTML = currency.format(data[j].price);
+                cell3.innerHTML = currency.format(data[j].average);
                 cell4.innerHTML = data[j].gain;
 
                 table.appendChild(row2);

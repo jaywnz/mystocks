@@ -7,7 +7,7 @@ Author: JW -->
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio</title>
+    <title>MyStocks | Portfolio</title>
     <link rel="stylesheet" href="main.css">
     <script src="main.js" defer></script>
 </head>
@@ -15,13 +15,12 @@ Author: JW -->
     <h1>My Portfolio</h1>
     <ul>
         <li>Negative quantities will reduce or delete stocks.</li>
-        <li>Adding the same stock with the same price will increase quantity.</li>
     </ul>
     <table id="portfolio"></table>
     <form action="server.py" method="POST">
         <label for="symbol">Stock Symbol</label>
-        <select id="symbol" name="symbol"></select><br>
-        <label for="quantity">Quantity</label>
+        <select id="symbol" name="symbol" required></select><br>
+        <label for="quantity" required>Quantity</label>
         <input type="number" id="quantity" name="quantity"><br>
         <label for="price">Price</label>
         <input type="number" id="price" name="price" step="0.01"><br>
