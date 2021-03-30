@@ -7,16 +7,17 @@ Author: JW -->
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock</title>
+    <title>MyStocks | Stock Charts</title>
     <link rel="stylesheet" href="main.css">
     <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
     <script src="main.js" defer></script>
 </head>
 <body>
-    <h1>Stock Chart</h1>
+    <h1>Stock Charts</h1>
+    <div id="plot"></div>
     <form action="server.py" method="GET">
         <label for="symbol">Stock Symbol</label>
-        <select id="symbol" name="symbol"></select><br>
+        <select id="symbol" name="symbol" required></select><br>
         <input type="reset" value="Reset">
         <input type="submit" value="Submit">
     </form>
