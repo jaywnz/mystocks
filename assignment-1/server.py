@@ -382,8 +382,11 @@ def makePlot(resource):
         close.append(item["close"])
     # Create plot
     fig = px.line(x=dates, y=close, title=symbol + ' YTD closing prices')
-    # TODO fix filepath and plot axis labels
-    fig.write_image("plot.png")
+    # TODO fix plot axis labels
+    # Set output path, convert to string and write image
+    path = Path(__file__).with_name('plot.png')
+    path = path.as_posix()
+    fig.write_image(path)
 
     header, body = showStock()
 
