@@ -78,17 +78,28 @@ function listSymbols() {
     });
 }
 
-// function showPlot() {
-//     let plotContainer = document.getElementById("plot");
-//     let plot = new Image();
-//     plot.src = "plot.png"
-//     plotContainer.appendChild(plot)
-// }
+function showPlot() {
+    let plotContainer = document.getElementById("plot");
+    let plot = new Image();
+
+    // Test whether plot exists, if so replace, if not serve placeholder
+    fetch("http://localhost:8080/plot.png")
+    .then(function(response) {
+        if (response.ok) {
+            plot.src = "plot.png"
+            plotContainer.appendChild(plot)
+        } else {
+            plot.src = "placeholder.png"
+            plotContainer.appendChild(plot)
+        }
+    })
+}
 
 if (document.getElementById("portfolio")){
     window.onload = makeTable();
     window.onload = listSymbols();
 }
 else {
+    window.onload = showPlot();
     window.onload = listSymbols();
 }
