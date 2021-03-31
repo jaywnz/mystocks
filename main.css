@@ -1,0 +1,28 @@
+/* Main styles for 159.352 Assignment 1
+Author: JW */
+
+label {
+    display: inline-block;
+    width: 100px;
+    text-align: left;
+  }
+
+input {
+    margin: 2px 0;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 15px 0;
+}
+
+td, th {
+  border: 1px solid #666;
+  min-width: 100px;
+  padding: 2px;
+}
+
+#chartContainer {
+  height: 300px;
+  width: 100%;
+}
