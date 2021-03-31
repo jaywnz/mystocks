@@ -9,14 +9,14 @@ Author: JW -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyStocks | Stock Charts</title>
-    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="main.css">
     <script src="main.js" defer></script>
 </head>
 
 <body>
     <h1>Stock Charts</h1>
     <div id="plot"></div>
-    <form action="server.py" method="GET">
+    <form action="mystocks.py" method="GET">
         <label for="symbol">Stock Symbol</label>
         <select id="symbol" name="symbol" required></select><br>
         <input type="submit" value="Submit">

@@ -5,16 +5,18 @@
 from socket import *
 from base64 import b64encode
 from io import BytesIO
+from pathlib import Path
 import _thread
 import pycurl
 import json
-from pathlib import Path
 import plotly.express as px
 import re
+import sys
 
 serverSocket = socket(AF_INET, SOCK_STREAM)
 
-serverPort = 8080
+# serverPort = 8080
+serverPort = int(sys.argv[1])
 serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 serverSocket.bind(("", serverPort))
 
@@ -59,7 +61,7 @@ def getFile(filename):
     except OSError:
         # Send HTTP response message for resource not found
         header = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
-        body = "<html><head><title>MyStocks</title></head><body><h1>404 Not Found</h1></body></html>\r\n".encode()
+        body = "<html><head><title>MyStocks</title></head><body><h1>404 Not Found</h1><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
 
     return header, body
 
