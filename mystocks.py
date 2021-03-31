@@ -1,5 +1,6 @@
 # 159.352 Assignment 1
-# Author: JW based on server3.py by Sunil Lal
+# MyStocks application without frameworks
+# Author: JW, based on server3.py by Sunil Lal
 
 from socket import *
 from base64 import b64encode
@@ -87,7 +88,7 @@ def process(connectionSocket):
         resource = message.split()[1][1:]
         # Use regex to extract symbol from URL query if present
         # Only stock chart form uses GET method URL queries
-        query = re.search(r'server\.py\?symbol\=[A-Z]+', resource)
+        query = re.search(r'mystocks\.py\?symbol\=[A-Z]+', resource)
         if auth == False:
             responseHeader, responseBody = authenticate(message)
         else:
@@ -97,7 +98,7 @@ def process(connectionSocket):
                 responseHeader, responseBody = showPortfolio()
             elif resource == "stock":
                 responseHeader, responseBody = showStock()
-            elif resource == "" or resource == "server.py":
+            elif resource == "" or resource == "mystocks.py":
                 responseHeader, responseBody = home()
             else:
                 responseHeader, responseBody = getFile(resource)
@@ -131,7 +132,7 @@ def authenticate(message):
     elif getHeader(message, "Authorization") == serverCreds:
         print("User logged in.")
         header = "HTTP/1.1 200 OK\r\n\r\n".encode()
-        body = "<html><head><title>MyStocks</title></head><body><h1>Welcome!</h1><p>User logged in.</p><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
+        body = "<html><head><title>MyStocks</title></head><body><h1>Welcome to MyStocks!</h1><p>User logged in.</p><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
         # Set user authentication
         global auth
         auth = True
