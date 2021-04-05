@@ -1,6 +1,24 @@
 /* Main styles for 159.352 Assignment 1
 Author: JW */
 
+body {
+  background-color: #444;
+  color: white;
+  font-family: Calibri, "Gill Sans", "Gill Sans MT", "DejaVu Sans Condensed","Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: white;
+}
+
+form {
+  margin: 20px;
+}
+
+#plot img {
+  border: 6px outset white;
+}
+
 label {
     display: inline-block;
     width: 100px;

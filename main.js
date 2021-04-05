@@ -3,6 +3,7 @@
 
 "use strict";
 
+// Construct portfolio table
 function makeTable() {
     let table = document.getElementById("portfolio");
     let currency = new Intl.NumberFormat('en-US', {
@@ -28,7 +29,7 @@ function makeTable() {
     row.appendChild(gainHead);
 
     // Create table from portfolio.json
-    fetch("http://localhost:8080/portfolio.json")
+    fetch("./public/portfolio.json")
         .then(response => response.json())
         .then(data => {
             for (let j = 0; j < data.length; j++){
@@ -54,6 +55,8 @@ function makeTable() {
         });
 }
 
+
+// Create dropdown of stock symbols
 function listSymbols() {
     let select = document.getElementById("symbol");
     let placeholder = document.createElement("option");
@@ -65,7 +68,7 @@ function listSymbols() {
     select.appendChild(placeholder);
 
     // Populate select with stock symbols from cs.json
-    fetch("http://localhost:8080/cs.json")
+    fetch("./public/cs.json")
     .then(response => response.json())
     .then(data => {
         let opt;
@@ -78,21 +81,46 @@ function listSymbols() {
     });
 }
 
+
+// Display generated stock plot
 function showPlot() {
     let plotContainer = document.getElementById("plot");
     let plot = new Image();
 
-    // Test whether plot exists, if so replace, if not serve placeholder
-    fetch("http://localhost:8080/plot.png")
+    fetch("./img/plot.png")
     .then(function(response) {
-        if (response.ok) {
-            plot.src = "plot.png"
-            plotContainer.appendChild(plot)
-        } else {
-            plot.src = "placeholder.png"
-            plotContainer.appendChild(plot)
-        }
-    })
+        plot.src = "./img/plot.png"
+        plotContainer.appendChild(plot)
+     })
+
+    // Test whether plot exists, if so replace, if not serve placeholder
+    // fetch("./img/plot.png")
+    // .then(function(response) {
+    //     if (response.ok) {
+    //         plot.src = "./img/plot.png"
+    //         plotContainer.appendChild(plot)
+    //     } else {
+    //         plot.src = "./img/placeholder.png"
+    //         plotContainer.appendChild(plot)
+    //     }
+    // })
+}
+
+
+// Convert POST payload into GET URL parameters
+// Workaround for Heroku intermittent POST issue
+// Adapted from https://stackoverflow.com/a/4726868
+function doGet() {
+    let form = document.getElementById("updateForm");
+    let elements = form.elements;
+    let values = [];
+
+    //Only take first three values, 4th and 5th are buttons
+    for (let k = 0; k < 3; k++){
+        values.push(encodeURIComponent(elements[k].name) + "=" + encodeURIComponent(elements[k].value));
+    }
+
+    form.action += "?" + values.join("&");
 }
 
 if (document.getElementById("portfolio")){
