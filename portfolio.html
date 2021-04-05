@@ -19,7 +19,7 @@ Author: JW -->
         <li>Negative quantities will reduce or delete stocks.</li>
     </ul>
     <table id="portfolio"></table>
-    <form action="mystocks.py" method="POST">
+    <form id="updateForm" action="mystocks.py" method="POST" enctype="application/x-www-form-urlencoded" onsubmit="doGet()">
         <label for="symbol">Stock Symbol</label>
         <select id="symbol" name="symbol" required></select><br>
         <label for="quantity" required>Quantity</label>
