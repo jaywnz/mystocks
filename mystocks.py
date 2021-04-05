@@ -16,8 +16,9 @@ serverSocket = socket(AF_INET, SOCK_STREAM)
 serverPort = int(sys.argv[1])
 serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 serverSocket.bind(("", serverPort))
-serverSocket.listen(10)
+serverSocket.listen(5)
 print('The server is running.')
+sys.stdout.flush()
 
 
 # Extract the given header value from the HTTP request message
@@ -86,10 +87,10 @@ def process(connectionSocket):
     # Extract HTTP method
     method = getMethod(message)
     # Only the portfolio form uses POST on the app
-    # NOTE: Heroku requires parameters to also be passed as GET to avoid the intermittent POST failure issue, see doGet() JS function
+    # NOTE: Heroku requires parameters also to be passed as GET to avoid the intermittent POST failure issue, see doGet() JS function
     if method == "POST":
         # Append message to logfile for error checking
-        with open("./log.txt", "w") as file:
+        with open("./logs.txt", "w") as file:
             file.write(message)
         responseHeader, responseBody = processForm(message)
     elif len(message) > 1:
@@ -98,6 +99,7 @@ def process(connectionSocket):
         # Use regex to extract symbol from URL query if present
         # Only stock chart form uses GET method URL queries
         query = re.search(r'mystocks\.py\?symbol\=[A-Z]+', resource)
+        # TODO fix authentication so that if one person logs in, subsequent people can't
         if auth == False:
             responseHeader, responseBody = authenticate(message)
         else:
@@ -136,11 +138,13 @@ def authenticate(message):
     serverCreds = b64encode(b"***REMOVED***:***REMOVED***").decode()
     if getHeader(message, "Authorization") == None:
         print("Authorising client.")
+        sys.stdout.flush()
         header = "HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"Please enter your credentials.\", charset=\"UTF-8\"\r\n\r\n".encode()
         body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Login</h1><p>Please enter your credentials to access this site.</p></body></html>\r\n".encode()
         return header, body
     elif getHeader(message, "Authorization") == serverCreds:
         print("User logged in.")
+        sys.stdout.flush()
         header = "HTTP/1.1 200 OK\r\n\r\n".encode()
         body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Welcome to MyStocks!</h1><p>User logged in.</p><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
         # Set user authentication
@@ -149,35 +153,68 @@ def authenticate(message):
         return header, body
     else:
         print("Invalid credentials.")
+        sys.stdout.flush()
         header = "HTTP/1.1 403 Forbidden\r\n\r\n".encode()
         body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
         return header, body
 
 
 # Process form data from HTTP POST and store as JSON
+# NOTE: Data taken from URL parameters in case of POST failure
 def processForm(message):
 
-    # Split POST body from header
-    payload = message.split("\r\n\r\n")[1]
-    # Break parameters into list
-    x = payload.split("&")
-    newData = {}
-    # Convert list to dict
-    for item in x:
-        try:
-            key, value = item.split("=")
-        except:
-            return
-        # Cast values to correct data types
-        try:
-            value = int(value)
-            newData[key] = value
-        except ValueError:
+    try:
+        # Split POST body from header
+        payload = message.split("\r\n\r\n")[1]
+        # POST payload is present, process from body
+        if payload != None or payload != "":
+            # Break parameters into list
+            x = payload.split("&")
+            newData = {}
+            print("Parsing POST...")
+            sys.stdout.flush()
+            # Convert list to dict
+            for item in x:
+                try:
+                    key, value = item.split("=")
+                except:
+                    return
+                # Cast values to correct data types
+                try:
+                    value = int(value)
+                    newData[key] = value
+                except ValueError:
+                    try:
+                        value = float(value)
+                        newData[key] = value
+                    except ValueError:
+                        newData[key] = value
+    except:
+        print("POST failure, trying URL parameters...")
+        sys.stdout.flush()
+        # In the case of POST failure, retrieve data from URL parameters
+        parameters = message.split("?")
+        parameters = parameters[1].split(" ")
+        payload = parameters[0]
+
+        x = payload.split("&")
+        newData = {}
+        # Convert list to dict
+        for item in x:
             try:
-                value = float(value)
+                key, value = item.split("=")
+            except:
+                return
+            # Cast values to correct data types
+            try:
+                value = int(value)
                 newData[key] = value
             except ValueError:
-                newData[key] = value
+                try:
+                    value = float(value)
+                    newData[key] = value
+                except ValueError:
+                    newData[key] = value
 
     # Send user data off for validation
     header, body = formValidate(newData)
@@ -209,7 +246,7 @@ def processForm(message):
             portfolio.append(newData)
             with open(path, "w") as file:
                 json.dump(portfolio, file)
-            
+
             header, body = showPortfolio()
             return header, body
 
@@ -359,6 +396,7 @@ def makePlot(resource):
 def showPortfolio():
 
     print("Showing portfolio...")
+    sys.stdout.flush()
     # Check to see if the symbols file exists, if not, retrieve
     path = "./public/cs.json"
     if os.path.isfile(path):
@@ -379,6 +417,7 @@ def showPortfolio():
 def showStock():
 
     print("Showing stock...")
+    sys.stdout.flush()
     # Check to see if the symbols file exists, if not, retrieve
     path = "./public/cs.json"
     if os.path.isfile(path):
