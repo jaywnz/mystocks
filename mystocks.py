@@ -13,7 +13,8 @@ import sys
 
 # Set up socket and start listening
 serverSocket = socket(AF_INET, SOCK_STREAM)
-serverPort = int(sys.argv[1])
+# serverPort = int(sys.argv[1])
+serverPort = 8080
 serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 serverSocket.bind(("", serverPort))
 serverSocket.listen(5)
@@ -71,7 +72,7 @@ def getFile(filename):
 def home():
 
     header = "HTTP/1.1 200 OK\r\n\r\n".encode()
-    body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>MyStocks</h1><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
+    body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Welcome to MyStocks</h1><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
 
     return header, body
 
@@ -86,33 +87,42 @@ def process(connectionSocket):
     message = connectionSocket.recv(1024).decode()
     # Extract HTTP method
     method = getMethod(message)
-    # Only the portfolio form uses POST on the app
-    # NOTE: Heroku requires parameters also to be passed as GET to avoid the intermittent POST failure issue, see doGet() JS function
-    if method == "POST":
-        # Append message to logfile for error checking
-        with open("./logs.txt", "w") as file:
-            file.write(message)
-        responseHeader, responseBody = processForm(message)
-    elif len(message) > 1:
+
+    if len(message) > 1:
         # Extract the path of the requested object from the message
         resource = message.split()[1][1:]
         # Use regex to extract symbol from URL query if present
         # Only stock chart form uses GET method URL queries
         query = re.search(r'mystocks\.py\?symbol\=[A-Z]+', resource)
-        # TODO fix authentication so that if one person logs in, subsequent people can't
-        if auth == False:
-            responseHeader, responseBody = authenticate(message)
-        else:
-            if query is not None:
+        # Catch unauthenticated users and send to login
+        if getHeader(message, "Authorization") == None:
+            responseHeader, responseBody = login(message)
+        # Check is authorisation header is correct
+        elif checkCredentials(message):
+            # Only the portfolio form uses POST on the app
+            # NOTE: Heroku requires parameters also to be passed as GET to avoid the intermittent POST failure issue, see doGet() JS function
+            if method == "POST":
+            # Append message to logfile for error checking
+                with open("./logs.txt", "w") as file:
+                    file.write(message)
+                responseHeader, responseBody = processForm(message)
+            elif query is not None:
                 responseHeader, responseBody = makePlot(resource)
             elif resource == "portfolio":
                 responseHeader, responseBody = showPortfolio()
             elif resource == "stock":
                 responseHeader, responseBody = showStock()
-            elif resource == "" or resource == "mystocks.py":
+            elif resource == "" or resource == "mystocks.py" or resource == "/":
                 responseHeader, responseBody = home()
             else:
                 responseHeader, responseBody = getFile(resource)
+        # In case of login failure
+        else:
+            print("Invalid credentials.")
+            sys.stdout.flush()
+            responseHeader = "HTTP/1.1 403 Forbidden\r\n\r\n".encode()
+            responseBody = "<html><head><title>MyStocks</title></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
+
     # Send the HTTP response header line to the connection socket
     connectionSocket.send(responseHeader)
     # Send the content of the HTTP body to the connection socket
@@ -132,31 +142,39 @@ def getMethod(message):
 
 
 # Carry out basic HTTP authentication
-def authenticate(message):
+def login(message):
+
+    print("Authorising client.")
+    sys.stdout.flush()
+    header = "HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"Please enter your credentials.\", charset=\"UTF-8\"\r\n\r\n".encode()
+    body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Login</h1><p>Please enter your credentials to access this site.</p></body></html>\r\n".encode()
+    return header, body
+
+# Ensures correct login credentials
+def checkCredentials(message):
 
     # Assumes only one user with fixed credentials
     serverCreds = b64encode(b"20020003:20020003").decode()
-    if getHeader(message, "Authorization") == None:
-        print("Authorising client.")
-        sys.stdout.flush()
-        header = "HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"Please enter your credentials.\", charset=\"UTF-8\"\r\n\r\n".encode()
-        body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Login</h1><p>Please enter your credentials to access this site.</p></body></html>\r\n".encode()
-        return header, body
-    elif getHeader(message, "Authorization") == serverCreds:
-        print("User logged in.")
-        sys.stdout.flush()
-        header = "HTTP/1.1 200 OK\r\n\r\n".encode()
-        body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Welcome to MyStocks!</h1><p>User logged in.</p><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
-        # Set user authentication
-        global auth
-        auth = True
-        return header, body
+    if getHeader(message, "Authorization") == serverCreds:
+        return 1
     else:
-        print("Invalid credentials.")
-        sys.stdout.flush()
-        header = "HTTP/1.1 403 Forbidden\r\n\r\n".encode()
-        body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
-        return header, body
+        return 0
+
+    # elif getHeader(message, "Authorization") == serverCreds:
+    #     print("User logged in.")
+    #     sys.stdout.flush()
+    #     header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+    #     body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Welcome to MyStocks!</h1><p>User logged in.</p><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
+    #     # Set user authentication
+    #     global auth
+    #     auth = True
+    #     return header, body
+    # else:
+    #     print("Invalid credentials.")
+    #     sys.stdout.flush()
+    #     header = "HTTP/1.1 403 Forbidden\r\n\r\n".encode()
+    #     body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
+    #     return header, body
 
 
 # Process form data from HTTP POST and store as JSON
