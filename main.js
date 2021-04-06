@@ -92,18 +92,6 @@ function showPlot() {
         plot.src = "./img/plot.png"
         plotContainer.appendChild(plot)
      })
-
-    // Test whether plot exists, if so replace, if not serve placeholder
-    // fetch("./img/plot.png")
-    // .then(function(response) {
-    //     if (response.ok) {
-    //         plot.src = "./img/plot.png"
-    //         plotContainer.appendChild(plot)
-    //     } else {
-    //         plot.src = "./img/placeholder.png"
-    //         plotContainer.appendChild(plot)
-    //     }
-    // })
 }
 
 
