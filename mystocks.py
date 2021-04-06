@@ -1,5 +1,5 @@
 # 159.352 Assignment 1
-# MyStocks application without frameworks
+# Stock portfolio application without web frameworks
 # Author: JW, based on server3.py by Sunil Lal
 
 from socket import *
@@ -19,6 +19,7 @@ serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 serverSocket.bind(("", serverPort))
 serverSocket.listen(5)
 print('The server is running.')
+# Required for Heroku log visibility
 sys.stdout.flush()
 
 
@@ -33,13 +34,12 @@ def getHeader(message, header):
     return value
 
 
-# Fetch the requested file and send the contents back to the client
+# Get the requested file and send the contents back to the client
 def getFile(filename):
 
     try:
         with open(filename, "rb") as file:
             body = file.read()
-
         # Set correct headers per filetype
         if filename.endswith(('png', 'jpg')):
             contentType = "image/" + filename.split('.')[-1]
@@ -59,7 +59,6 @@ def getFile(filename):
 
         header = ("HTTP/1.1 200 OK\r\nContent-Type:" +
                   contentType + "\r\nCache-Control:" + cacheControl + "\r\n\r\n").encode()
-
     except OSError:
         # Send HTTP response message for resource not found
         header = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
@@ -80,27 +79,26 @@ def home():
 # Process the client's request
 def process(connectionSocket):
 
-    # Declaring empty reponse strings prevents error on Heroku with intermittent empty request errors when app is idle
+    # Declaring empty reponse strings prevents error on Heroku with intermittent empty request errors while app is idle
     responseHeader = b""
     responseBody = b""
     # Receives the request message from the client
     message = connectionSocket.recv(1024).decode()
-    # Extract HTTP method
-    method = getMethod(message)
 
     if len(message) > 1:
         # Extract the path of the requested object from the message
         resource = message.split()[1][1:]
-        # Use regex to extract symbol from URL query if present
-        # Only stock chart form uses GET method URL queries
-        query = re.search(r'mystocks\.py\?symbol\=[A-Z]+', resource)
         # Catch unauthenticated users and send to login
         if getHeader(message, "Authorization") == None:
             responseHeader, responseBody = login(message)
         # Check is authorisation header is correct
         elif checkCredentials(message):
+            # Use regex to extract symbol from URL query if present
+            query = re.search(r'mystocks\.py\?symbol\=[A-Z]+$', resource)
+            # Extract HTTP method
+            method = getMethod(message)
             # Only the portfolio form uses POST on the app
-            # NOTE: Heroku requires parameters also to be passed as GET to avoid the intermittent POST failure issue, see doGet() JS function
+            # NOTE: Heroku requires parameters to be passed as GET to avoid the intermittent POST failure issue, see doGet() JS function
             if method == "POST":
             # Append message to logfile for error checking
                 with open("./logs.txt", "w") as file:
@@ -150,6 +148,7 @@ def login(message):
     body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Login</h1><p>Please enter your credentials to access this site.</p></body></html>\r\n".encode()
     return header, body
 
+
 # Ensures correct login credentials
 def checkCredentials(message):
 
@@ -160,25 +159,9 @@ def checkCredentials(message):
     else:
         return 0
 
-    # elif getHeader(message, "Authorization") == serverCreds:
-    #     print("User logged in.")
-    #     sys.stdout.flush()
-    #     header = "HTTP/1.1 200 OK\r\n\r\n".encode()
-    #     body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Welcome to MyStocks!</h1><p>User logged in.</p><ul><li><a href='/portfolio'>Portfolio</a></li><li><a href='/stock'>Stock Charts</a></li></ul></body></html>\r\n".encode()
-    #     # Set user authentication
-    #     global auth
-    #     auth = True
-    #     return header, body
-    # else:
-    #     print("Invalid credentials.")
-    #     sys.stdout.flush()
-    #     header = "HTTP/1.1 403 Forbidden\r\n\r\n".encode()
-    #     body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
-    #     return header, body
-
 
 # Process form data from HTTP POST and store as JSON
-# NOTE: Data taken from URL parameters in case of POST failure
+# NOTE: Data is taken from URL parameters in case of POST failure
 def processForm(message):
 
     try:
@@ -214,7 +197,6 @@ def processForm(message):
         parameters = message.split("?")
         parameters = parameters[1].split(" ")
         payload = parameters[0]
-
         x = payload.split("&")
         newData = {}
         # Convert list to dict
@@ -234,7 +216,7 @@ def processForm(message):
                 except ValueError:
                     newData[key] = value
 
-    # Send user data off for validation
+    # Send user data for validation
     header, body = formValidate(newData)
     # A returned header and body means a validation error
     if (header and body):
@@ -276,12 +258,21 @@ def processForm(message):
             header = "HTTP/1.1 200 OK\r\n\r\n".encode()
             body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><p>Error: You entered a negative quantity for a stock which you do not own.</p><a href='/portfolio'>Go back to portfolio</a>.</body></html>\r\n".encode()
             return header, body
+        # Adjust quantities for symbols in portfolio
         else:
             for record in portfolio:
                 if record["symbol"] == newData["symbol"]:
-                    record["quantity"] += newData["quantity"]
-                    if record["quantity"] <= 0:
+                    # In the case of short selling
+                    if abs(newData["quantity"]) > record["quantity"]:
+                        header = "HTTP/1.1 200 OK\r\n\r\n".encode()
+                        body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><p>Error: Short selling not permitted.</p><a href='/portfolio'>Go back to portfolio</a>.</body></html>\r\n".encode()
+                        return header, body
+                    # In the case of selling all of a stock
+                    elif abs(newData["quantity"]) == record["quantity"]:
                         portfolio.remove(record)
+                    # Reduce stock holdings accordingly
+                    else:
+                        record["quantity"] += newData["quantity"]
                     with open(path, "w") as file:
                         json.dump(portfolio, file)
                     break
@@ -294,7 +285,7 @@ def processForm(message):
                     json.dump(portfolio, file)
                 break
         # Calculate moving average buy price for additional stock purchases
-        calcMovingAvg(newData)
+        calcAvgBuy(newData)
         # Deleted calcGains() call for speed. Loss/gain updated on first entry to portfolio
 
     # Refresh the portfolio after changes
@@ -353,8 +344,8 @@ def formValidate(newData):
         return 0, 0
 
 
-# Calculate the moving average of a stock price
-def calcMovingAvg(newData):
+# Calculate the average of stock buy price
+def calcAvgBuy(newData):
 
     path = "./public/portfolio.json"
     with open(path, "r") as file:
@@ -367,17 +358,15 @@ def calcMovingAvg(newData):
                 record["average"] = record["price"]
                 break
             else:
-                # Use count to calculate moving average and update record
-                record["count"] += 1
-                newAvg = (record["average"] * (record["count"] -
-                          1) + newData["price"]) / record["count"]
+                oldPrice = record["price"]
+                oldQuant = record["quantity"] - newData["quantity"]
+                newPrice = newData["price"]
+                newQuant = newData["quantity"]
+                totQuant = oldQuant + newQuant
+                newAvg = (oldQuant * oldPrice + newQuant * newPrice)/totQuant
                 record["average"] = newAvg
+                record["price"] = newPrice
                 break
-            # # Adjust stock quantities and if it falls below zero, remove
-            # record["quantity"] += newData["quantity"]
-            # if record["quantity"] <= 0:
-            #     portfolio.remove(record)
-            #     break
     # Write changes to file
     with open(path, "w") as file:
         json.dump(portfolio, file)
