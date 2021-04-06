@@ -1,6 +1,7 @@
 # 159.352 Assignment 1
-# Stock portfolio application without web frameworks
-# Author: JW, based on server3.py by Sunil Lal
+# MyStocks stock portfolio app without web frameworks
+# Author: JW
+# Built on server3.py by Sunil Lal
 
 from socket import *
 from base64 import b64encode
@@ -13,8 +14,7 @@ import sys
 
 # Set up socket and start listening
 serverSocket = socket(AF_INET, SOCK_STREAM)
-# serverPort = int(sys.argv[1])
-serverPort = 8080
+serverPort = int(sys.argv[1])
 serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 serverSocket.bind(("", serverPort))
 serverSocket.listen(5)
@@ -98,12 +98,18 @@ def process(connectionSocket):
             # Extract HTTP method
             method = getMethod(message)
             # Only the portfolio form uses POST on the app
-            # NOTE: Heroku requires parameters to be passed as GET to avoid the intermittent POST failure issue, see doGet() JS function
+            # NOTE: Heroku requires parameters to be passed as URL parameters to avoid the intermittent POST failure issue, see doGet() JS function
             if method == "POST":
             # Append message to logfile for error checking
                 with open("./logs.txt", "w") as file:
                     file.write(message)
-                responseHeader, responseBody = processForm(message)
+                try:
+                    responseHeader, responseBody = processForm(message)
+                # Workaround for Heroku POST failure
+                except TypeError:
+                    print("POST failure. Retrying.")
+                    sys.stdout.flush()
+                    responseHeader, responseBody = processForm(resource)
             elif query is not None:
                 responseHeader, responseBody = makePlot(resource)
             elif resource == "portfolio":
@@ -164,7 +170,8 @@ def checkCredentials(message):
 # NOTE: Data is taken from URL parameters in case of POST failure
 def processForm(message):
 
-    try:
+    # Test whether we have received POST or URL parameters
+    if len(message.split()) > 1:
         # Split POST body from header
         payload = message.split("\r\n\r\n")[1]
         # POST payload is present, process from body
@@ -190,14 +197,12 @@ def processForm(message):
                         newData[key] = value
                     except ValueError:
                         newData[key] = value
-    except:
-        print("POST failure, trying URL parameters...")
+    # Otherwise, deal with URL parameters appended by JS doGet()
+    else:
+        print("Parsing URL parameters...")
         sys.stdout.flush()
-        # In the case of POST failure, retrieve data from URL parameters
         parameters = message.split("?")
-        parameters = parameters[1].split(" ")
-        payload = parameters[0]
-        x = payload.split("&")
+        x = parameters[1].split("&")
         newData = {}
         # Convert list to dict
         for item in x:
