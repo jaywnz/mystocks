@@ -1,5 +1,4 @@
 # MyStocks Portfolio Tracker
-## Author: JW
 
 MyStocks is a US stock portfolio tracker and plotting app built without the use of web frameworks. It relies on Python sockets and HTTP requests/responses. MyStocks is deployed in a Docker container on Heroku. US stock market data is retrieved via the [IEX Cloud](https://www.iexcloud.io/) API.
 
@@ -10,7 +9,7 @@ Created as part of the Advanced Web Development course (159.352), semester 1, 20
 - [Stock Charts](https://mystocks-159352.herokuapp.com/stocks)
 - [Log](https://mystocks-159352.herokuapp.com/logs.txt)
 
-**Known issues**
+## Known issues
 
 Heroku intermittently drops POST payloads from form submissions on the portfolio page. A workaround is implemented whereby the HTTP method remains POST, but the payload is appended in the URL by a JavaScript function which is used as a fallback in case of POST failure. This issue has been tested and replicated across Firefox/Chrome/Edge and via HTTP/HTTPS.
 

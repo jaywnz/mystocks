@@ -91,7 +91,7 @@ def process(connectionSocket):
         # Catch unauthenticated users and send to login
         if getHeader(message, "Authorization") == None:
             responseHeader, responseBody = login(message)
-        # Check is authorisation header is correct
+        # Check if authorisation header is correct
         elif checkCredentials(message):
             # Use regex to extract symbol from URL query if present
             query = re.search(r'mystocks\.py\?symbol\=[A-Z]+$', resource)
@@ -110,6 +110,7 @@ def process(connectionSocket):
                     print("POST failure. Retrying.")
                     sys.stdout.flush()
                     responseHeader, responseBody = processForm(resource)
+            # If regex was successful
             elif query is not None:
                 responseHeader, responseBody = makePlot(resource)
             elif resource == "portfolio":
@@ -131,8 +132,8 @@ def process(connectionSocket):
     connectionSocket.send(responseHeader)
     # Send the content of the HTTP body to the connection socket
     connectionSocket.send(responseBody)
-    connectionSocket.shutdown(SHUT_RDWR)
     # Close the client connection socket
+    connectionSocket.shutdown(SHUT_RDWR)
     connectionSocket.close()
 
 
@@ -145,7 +146,7 @@ def getMethod(message):
     return method
 
 
-# Carry out basic HTTP authentication
+# Prompt user to login
 def login(message):
 
     print("Authorising client.")
@@ -170,7 +171,7 @@ def checkCredentials(message):
 # NOTE: Data is taken from URL parameters in case of POST failure
 def processForm(message):
 
-    # Test whether we have received POST or URL parameters
+    # Test whether we have received POST
     if len(message.split()) > 1:
         # Split POST body from header
         payload = message.split("\r\n\r\n")[1]
@@ -223,7 +224,7 @@ def processForm(message):
 
     # Send user data for validation
     header, body = formValidate(newData)
-    # A returned header and body means a validation error
+    # A returned header and body means a validation error message
     if (header and body):
         return header, body
 
@@ -233,7 +234,6 @@ def processForm(message):
         with open(path, "r") as file:
             portfolio = json.load(file)
     # If portfolio doesn't exist, create it
-    # TODO has problems when file exists but empty, needs [] to work
     except (OSError, ValueError):
         with open(path, "w") as file:
             json.dump(newData, file)
@@ -242,23 +242,21 @@ def processForm(message):
     # If symbol does not exist in list then append it if quantity positive
     if newData["quantity"] > 0:
         if not any(record["symbol"] == newData["symbol"] for record in portfolio):
-            newData["count"] = 1
+            # Set average to price for first transaction
             newData["average"] = float(newData["price"])
-
             # Calculate loss/gain on purchase
             newData = calcGains(newData)
             # Write changes to file
             portfolio.append(newData)
             with open(path, "w") as file:
                 json.dump(portfolio, file)
-
             header, body = showPortfolio()
             return header, body
 
     # Check if user has submitted a negative quantity and reduce/remove stock
     # Do not recalculate average buy price based on negative quantity change
     if newData["quantity"] < 0:
-        # If user has submitted non-existent symbol
+        # If user has submitted symbol which isn't in the portfolio
         if not any(record["symbol"] == newData["symbol"] for record in portfolio):
             header = "HTTP/1.1 200 OK\r\n\r\n".encode()
             body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><p>Error: You entered a negative quantity for a stock which you do not own.</p><a href='/portfolio'>Go back to portfolio</a>.</body></html>\r\n".encode()
@@ -272,7 +270,7 @@ def processForm(message):
                         header = "HTTP/1.1 200 OK\r\n\r\n".encode()
                         body = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><p>Error: Short selling not permitted.</p><a href='/portfolio'>Go back to portfolio</a>.</body></html>\r\n".encode()
                         return header, body
-                    # In the case of selling all of a stock
+                    # In the case of selling all of a stock, remove record
                     elif abs(newData["quantity"]) == record["quantity"]:
                         portfolio.remove(record)
                     # Reduce stock holdings accordingly
@@ -289,10 +287,8 @@ def processForm(message):
                 with open(path, "w") as file:
                     json.dump(portfolio, file)
                 break
-        # Calculate moving average buy price for additional stock purchases
+        # Calculate average buy price for additional stock purchases
         calcAvgBuy(newData)
-        # Deleted calcGains() call for speed. Loss/gain updated on first entry to portfolio
-
     # Refresh the portfolio after changes
     header, body = showPortfolio()
 
@@ -349,7 +345,7 @@ def formValidate(newData):
         return 0, 0
 
 
-# Calculate the average of stock buy price
+# Calculate the average stock buy price
 def calcAvgBuy(newData):
 
     path = "./public/portfolio.json"
@@ -379,11 +375,11 @@ def calcAvgBuy(newData):
     return
 
 
+# Create year to date closing price plot for given stock
 def makePlot(resource):
 
     # Use regex to extract symbol name
     symbol = re.search(r'[A-Z]+', resource).group(0)
-
     # API call to retrieve symbol details
     ytd = getPlotData(symbol)
     dates = []
@@ -416,7 +412,6 @@ def showPortfolio():
     else:
         getSymbols()
     # Add portfolio.html to body
-    # path = Path(__file__).with_name('portfolio.html')
     path = "./portfolio.html"
     with open(path, "rb") as file:
         body = file.read()
@@ -437,7 +432,6 @@ def showStock():
     else:
         getSymbols()
     # Add stock.html to body
-    # path = Path(__file__).with_name('stock.html')
     path = "./stock.html"
     with open(path, "rb") as file:
         body = file.read()
@@ -446,9 +440,6 @@ def showStock():
 
     return header, body
 
-
-# Set initial user authentication
-auth = False
 
 # Main web server loop
 while True:
