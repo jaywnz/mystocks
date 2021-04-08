@@ -11,7 +11,7 @@ import urllib.request
 from io import BytesIO
 
 
-# Retrieve list of stock symbols from IEX Cloud as cs.json
+# Retrieve list of stock symbols from IEX Cloud
 def getSymbols():
 
     response_buffer = BytesIO()
@@ -51,6 +51,7 @@ def calcGains(newData):
     return newData
     
 
+# Retrieve year-to-date data for a given stock symbol
 def getPlotData (symbol):
 
     response_buffer = BytesIO()
