@@ -83,7 +83,7 @@ def process(connectionSocket):
     responseHeader = b""
     responseBody = b""
     # Receives the request message from the client
-    message = connectionSocket.recv(1024).decode()
+    message = connectionSocket.recv(2048).decode()
 
     if len(message) > 1:
         # Extract the path of the requested object from the message
@@ -126,7 +126,7 @@ def process(connectionSocket):
             print("Invalid credentials.")
             sys.stdout.flush()
             responseHeader = "HTTP/1.1 403 Forbidden\r\n\r\n".encode()
-            responseBody = "<html><head><title>MyStocks</title></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
+            responseBody = "<html><head><title>MyStocks</title><link rel='stylesheet' href='main.css'></head><body><h1>Invalid login</h1><p>Please enter the correct credentials to access this site.</p></body></html>\r\n".encode()
 
     # Send the HTTP response header line to the connection socket
     connectionSocket.send(responseHeader)
