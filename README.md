@@ -11,7 +11,7 @@ Created as part of the Advanced Web Development course (159.352), semester 1, 20
 
 ## HTTP Authentication
 
-Username: user  
+Username: user\
 Password: pass
 
 ## Known issues
