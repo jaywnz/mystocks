@@ -9,13 +9,14 @@ import re
 import plotly.express as px
 import urllib.request
 from io import BytesIO
+from config import *
 
 
 # Retrieve list of stock symbols from IEX Cloud
 def getSymbols():
 
     response_buffer = BytesIO()
-    url = "https://cloud.iexapis.com/stable/ref-data/symbols?filter=symbol,type&token=pk_dc1d04cb0f2c4bc5b81af61256b2fd47"
+    url = "https://cloud.iexapis.com/stable/ref-data/symbols?filter=symbol,type&token=" + API_KEY
     with urllib.request.urlopen(url) as response:
         response_buffer = response.read()
     # Load all symbols into JSON object from memory buffer
@@ -37,7 +38,7 @@ def calcGains(newData):
     avgPrice = newData["average"]
 
     response_buffer = BytesIO()
-    url = "https://cloud.iexapis.com/stable/stock/" + symbol + "/quote?filter=symbol,latestPrice&token=pk_dc1d04cb0f2c4bc5b81af61256b2fd47"
+    url = "https://cloud.iexapis.com/stable/stock/" + symbol + "/quote?filter=symbol,latestPrice&token=" + API_KEY
     with urllib.request.urlopen(url) as response:
         response_buffer = response.read()
     # Load response from memory buffer as JSON object and get price
@@ -55,7 +56,7 @@ def calcGains(newData):
 def getPlotData (symbol):
 
     response_buffer = BytesIO()
-    url = "https://cloud.iexapis.com/stable/stock/" + symbol + "/chart/ytd?filter=date,close&chartCloseOnly=true&token=pk_dc1d04cb0f2c4bc5b81af61256b2fd47"
+    url = "https://cloud.iexapis.com/stable/stock/" + symbol + "/chart/ytd?filter=date,close&chartCloseOnly=true&token=" + API_KEY
     with urllib.request.urlopen(url) as response:
         response_buffer = response.read()
     ytd = json.loads(response_buffer.decode('UTF-8'))
