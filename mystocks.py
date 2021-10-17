@@ -160,7 +160,7 @@ def login(message):
 def checkCredentials(message):
 
     # Assumes only one user with fixed credentials
-    serverCreds = b64encode(b"***REMOVED***:***REMOVED***").decode()
+    serverCreds = b64encode(b"user:pass").decode()
     if getHeader(message, "Authorization") == serverCreds:
         return 1
     else:
